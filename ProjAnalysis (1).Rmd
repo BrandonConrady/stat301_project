@@ -1,0 +1,144 @@
+---
+title: "ProjAnalysis"
+output: html_document
+date: "2025-04-18"
+---
+
+
+# Data processing
+```{r}
+# pulling only the needed columns
+# bwt - birth weight of infant
+# gestation - how long the pregnancy lasted
+# smoke - whether or not the mother smoked
+data <- babies[c(2, 3, 5, 8)]
+
+# create age bracket column
+data$age <- cut(
+  data$age,  # Use the correct column name 'age'
+  breaks = c(19, 24, 29, Inf),  # 19 ensures 20 is included
+  right = TRUE,                 
+  include.lowest = TRUE,
+  labels = c("20–24", "25–29", "30+")
+)
+data$age <- as.factor(data$age)
+data$smoke <- factor(data$smoke,
+                                 levels = c(0, 1),
+                                 labels = c("Non-Smoker", "Smoker"))
+
+# Remove rows that contain NA values
+data <- na.omit(data)
+
+# final dataset
+data
+```
+
+
+# Data exploration
+```{r}
+library(ggplot2)
+library(dplyr)
+
+hist(data$bwt)
+hist(data$gestation)
+
+data %>%
+  count(smoke) %>%
+  arrange(smoke) %>%
+  ggplot(aes(x = reorder(smoke, n), y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Smoke Status", y = "Number of Rows", title = "Count of Rows by Smoke Status") +
+  theme_minimal()
+
+data %>%
+  count(smoke)
+
+data %>%
+  count(age) %>%
+  arrange(age) %>%
+  ggplot(aes(x = reorder(age, n), y = n)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(x = "Age Group", y = "Number of Rows", title = "Count of Rows by Age Group") +
+  theme_minimal()
+
+data %>%
+  count(age)
+
+table(data$smoke, data$age)
+```
+
+
+# RQ1 - Birthweight ANOVA
+```{r}
+library(car)
+
+# Fit the model
+lm_model <- lm(bwt ~ age * smoke, data = data)
+
+# Type II ANOVA
+Anova(lm_model, type = 2)
+
+# Or Type III ANOVA (make sure contrasts are set properly)
+contrasts(data$age) <- contr.sum
+contrasts(data$smoke) <- contr.sum
+Anova(lm_model, type = 3)
+```
+
+
+# RQ2 - Gestation Length ANOVA
+```{r}
+# Fit the model
+lm_model <- lm(gestation ~ age * smoke, data = data)
+
+# Type II ANOVA
+Anova(lm_model, type = 2)
+
+# Or Type III ANOVA (requires setting contrasts correctly)
+contrasts(data$age) <- contr.sum
+contrasts(data$smoke) <- contr.sum
+Anova(lm_model, type = 3)
+```
+
+
+# Exploration - mother weight
+```{r}
+momwt <- babies[c(2, 7)]
+momwt <- na.omit(momwt)
+momwt <- momwt %>%
+  mutate(weight_group = ntile(weight, 3)) %>%
+  mutate(weight_group = case_when(
+    weight_group == 1 ~ "low",
+    weight_group == 2 ~ "average",
+    weight_group == 3 ~ "high"
+  ))
+momwt
+
+# Ensure weight_group is a factor
+momwt$weight_group <- factor(momwt$weight_group, levels = c("low", "average", "high"))
+
+momwt %>%
+  count(weight_group) %>%
+  arrange(weight_group) %>%
+  ggplot(aes(x = reorder(weight_group, n), y = n)) +
+  geom_bar(stat = "identity", fill = "green") +
+  labs(x = "Age Group", y = "Number of Rows", title = "Count of Rows by Age Group") +
+  theme_minimal()
+
+momwt %>%
+  count(weight_group)
+
+# Run one-way ANOVA
+anova_result <- aov(bwt ~ weight_group, data = momwt)
+
+# View ANOVA summary
+summary(anova_result)
+TukeyHSD(anova_result)
+```
+
+
+
+```{r}
+
+```
+
+
