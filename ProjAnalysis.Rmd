@@ -134,11 +134,3 @@ anova_result <- aov(bwt ~ weight_group, data = momwt)
 summary(anova_result)
 TukeyHSD(anova_result)
 ```
-
-
-
-```{r}
-
-```
-
-
